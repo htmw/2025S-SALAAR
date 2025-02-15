@@ -1,4 +1,4 @@
-# 2025S-SALAAR( plant Leaf disease detection )
+# Phytora Overview
 It causes immense losses in agriculture, and the earlier a plant disease is found, the better the chances for minimizing damages. 
 The classical methods of disease detection are usually slow, not effective, and expensive, especially in large-scale farming.
 This area has been evolved with AI: using computer vision and machine learning, the detection of diseases has been done much quicker and more effectively.
