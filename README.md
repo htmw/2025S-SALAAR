@@ -157,17 +157,26 @@ The team demonstrated the preliminary project to classmates for a peer-to-peer
 
 # 4. Difficulties and Solutions
 
-Problem-Solving Put into practice
-Adoption of Agile is initially challenging. Agile training was given, and expectations were made explicit.
+Problem-Solving Put into practice Adoption of Agile is initially challenging. 
+
+Agile training was given, and expectations were made explicit.
+
 Delays in setting up the environment Senior developers were assigned to mentor junior members.
+
 Providing efficient cooperation For openness, a shared Jira board and daily check-ins were used.
+
 Integration of CI/CD and testing Code reviews and automated testing were first implemented in early 
 
-# 5. Conclusion and Upcoming Actions
-Sprint 0 was effective in laying a solid development foundation. Sprint 1's future priorities will be:
+# 5. Conclusion and Upcoming Actions:
+
+Sprint 0 was effective in laying a solid development foundation.
+
+   **Sprint 1's future priorities will be:**
 
 constructing the fundamental disease detection machine learning model.
+
 constructing the first user interface for the front end.
+
 integrating the cloud for scalability.
 
 
