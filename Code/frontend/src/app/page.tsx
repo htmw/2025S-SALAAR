@@ -34,6 +34,7 @@ import {
 
 interface DetectionResult {
   status: 'Healthy' | 'Diseased';
+  disease: string | null;  // Added disease field
 }
 
 export default function Home() {
@@ -100,6 +101,7 @@ export default function Home() {
     } catch (err: any) {
       console.error('Error analyzing image:', err);
       setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -500,7 +502,7 @@ export default function Home() {
                                 <Text weight="bold" size="5">
                                   {result.status === 'Healthy' 
                                     ? 'Healthy Leaf' 
-                                    : 'Diseased Leaf'}
+                                    : result.disease ? `Disease: ${result.disease}` : 'Diseased Leaf'}
                                 </Text>
                               </Callout.Text>
                             </Callout.Root>
