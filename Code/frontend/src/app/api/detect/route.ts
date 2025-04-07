@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface DetectionResult {
+  status: 'Healthy' | 'Diseased';
+  disease: string | null;
+  confidence: number;
+  advice: string | null;
+}
+
+// Map of diseases to treatment advice
+const diseaseAdvice: Record<string, string> = {
+  'Apple Scab': 'Apply fungicide specifically targeting scab. Remove fallen leaves to reduce spread.',
+  'Apple Rust': 'Apply fungicide designed for rust diseases. Remove nearby juniper plants if present.',
+  'Healthy': 'Continue regular maintenance and monitoring.'
+};
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -26,26 +40,27 @@ export async function POST(request: NextRequest) {
     // Convert image to base64 for OpenAI API
     const base64Image = buffer.toString('base64');
     
-    // Prepare the curl-style request to OpenAI API
+    // Prepare the request to OpenAI API
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
     };
     
+    // Updated prompt for disease classification and confidence
     const payload = {
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are an expert in apple leaf disease detection. Your only task is to determine if an apple leaf is healthy or diseased. You should respond with ONLY 'Healthy' or 'Diseased' and nothing else."
+          content: "You are an expert in apple leaf disease detection. Analyze the apple leaf image and determine if it's healthy or has a specific disease (focus on Apple Scab or Apple Rust). Provide your classification with a confidence score (0-100%)."
         },
         {
           role: "user",
           content: [
             { 
               type: "text", 
-              text: "Is this apple leaf healthy or diseased? Respond with ONLY 'Healthy' or 'Diseased'." 
+              text: "Is this apple leaf healthy or diseased? If diseased, identify if it's Apple Scab or Apple Rust. Respond in JSON format with fields: status (Healthy/Diseased), disease (null if healthy, otherwise the disease name), confidence (0-100 as a number)." 
             },
             {
               type: "image_url",
@@ -56,7 +71,8 @@ export async function POST(request: NextRequest) {
           ]
         }
       ],
-      max_tokens: 10
+      response_format: { type: "json_object" },
+      max_tokens: 300
     };
     
     // Send the request to OpenAI API
@@ -74,12 +90,17 @@ export async function POST(request: NextRequest) {
     
     const data = await response.json();
     
-    // Extract just the 'Healthy' or 'Diseased' response
-    const aiResponse = data.choices[0].message.content.trim();
+    // Parse the AI response (now in JSON format)
+    const aiResponse = JSON.parse(data.choices[0].message.content);
     
-    // Return a simple result object
-    const result = {
-      status: aiResponse === "Healthy" ? "Healthy" : "Diseased"
+    // Create the result with appropriate advice
+    const result: DetectionResult = {
+      status: aiResponse.status,
+      disease: aiResponse.disease,
+      confidence: aiResponse.confidence,
+      advice: aiResponse.status === 'Healthy' 
+        ? diseaseAdvice['Healthy'] 
+        : diseaseAdvice[aiResponse.disease] || 'Consult with a plant pathologist for treatment options.'
     };
 
     return NextResponse.json(result);
