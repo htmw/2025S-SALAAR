@@ -34,7 +34,8 @@ import {
 
 interface DetectionResult {
   status: 'Healthy' | 'Diseased';
-  disease: string | null;  // Added disease field
+  disease: string | null;   // Added for US2.1
+  confidence: number;       // Added for US2.2
 }
 
 export default function Home() {
@@ -499,11 +500,33 @@ export default function Home() {
                                 {result.status === 'Healthy' ? <CheckIcon /> : <ExclamationTriangleIcon />}
                               </Callout.Icon>
                               <Callout.Text>
-                                <Text weight="bold" size="5">
-                                  {result.status === 'Healthy' 
-                                    ? 'Healthy Leaf' 
-                                    : result.disease ? `Disease: ${result.disease}` : 'Diseased Leaf'}
-                                </Text>
+                                <Flex direction="column" gap="2">
+                                  <Text weight="bold" size="5">
+                                    {result.status === 'Healthy' 
+                                      ? 'Healthy Leaf' 
+                                      : result.disease ? `Disease: ${result.disease}` : 'Diseased Leaf'}
+                                  </Text>
+                                  {result.confidence !== undefined && (
+                                    <Flex align="center" gap="2">
+                                      <Text size="2">Confidence:</Text>
+                                      <Box style={{ 
+                                        width: '100%', 
+                                        maxWidth: '150px',
+                                        height: '8px',
+                                        backgroundColor: 'var(--gray-3)',
+                                        borderRadius: '4px',
+                                        overflow: 'hidden'
+                                      }}>
+                                        <Box style={{ 
+                                          width: `${result.confidence}%`,
+                                          height: '100%',
+                                          backgroundColor: result.status === 'Healthy' ? 'var(--green-9)' : 'var(--red-9)'
+                                        }} />
+                                      </Box>
+                                      <Text size="2" weight="medium">{Math.round(result.confidence)}%</Text>
+                                    </Flex>
+                                  )}
+                                </Flex>
                               </Callout.Text>
                             </Callout.Root>
                           </Flex>
