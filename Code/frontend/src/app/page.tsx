@@ -34,8 +34,9 @@ import {
 
 interface DetectionResult {
   status: 'Healthy' | 'Diseased';
-  disease: string | null;   // Added for US2.1
-  confidence: number;       // Added for US2.2
+  disease: string | null;    // Added for US2.1
+  confidence: number;        // Added for US2.2
+  advice: string | null;     // Added for US2.3
 }
 
 export default function Home() {
@@ -525,6 +526,19 @@ export default function Home() {
                                       </Box>
                                       <Text size="2" weight="medium">{Math.round(result.confidence)}%</Text>
                                     </Flex>
+                                  )}
+                                  {result.advice && (
+                                    <Box mt="2" style={{ 
+                                      backgroundColor: 'var(--gray-2)', 
+                                      padding: '8px 12px', 
+                                      borderRadius: 'var(--radius-2)',
+                                      border: '1px solid var(--gray-4)'
+                                    }}>
+                                      <Flex gap="2" align="start">
+                                        <Text size="2" weight="bold">Advice:</Text>
+                                        <Text size="2">{result.advice}</Text>
+                                      </Flex>
+                                    </Box>
                                   )}
                                 </Flex>
                               </Callout.Text>
