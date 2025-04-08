@@ -1,131 +1,67 @@
-import os
-import time
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from tqdm import tqdm
-from config import Config
-from dataset import get_dataloaders
-from model import get_model
-from utils import AverageMeter, accuracy, save_checkpoint
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
 
-def train_epoch(model, train_loader, criterion, optimizer, epoch):
+transform = transforms.Compose([
+    transforms.Resize((150, 150)),
+    transforms.ToTensor()
+])
+
+train_dataset = datasets.ImageFolder('data/train', transform=transform)
+val_dataset = datasets.ImageFolder('data/validation', transform=transform)
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * (150//4) * (150//4), 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(128, 3)
+        )
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = SimpleCNN().to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+epochs = 15
+
+for epoch in range(epochs):
     model.train()
-    
-    losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
-    
-    pbar = tqdm(train_loader, desc=f"Epoch {epoch}")
-    
-    for inputs, targets in pbar:
-        inputs, targets = inputs.to(Config.DEVICE), targets.to(Config.DEVICE)
-        
+    for imgs, labels in train_loader:
+        imgs, labels = imgs.to(device), labels.to(device)
         optimizer.zero_grad()
-        
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
-        
+        outputs = model(imgs)
+        loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        
-        acc1, acc5 = accuracy(outputs, targets, topk=(1, 5))
-        losses.update(loss.item(), inputs.size(0))
-        top1.update(acc1.item(), inputs.size(0))
-        top5.update(acc5.item(), inputs.size(0))
-        
-        pbar.set_postfix({
-            'loss': f"{losses.avg:.4f}",
-            'acc@1': f"{top1.avg:.2f}%",
-            'acc@5': f"{top5.avg:.2f}%"
-        })
-    
-    return losses.avg, top1.avg, top5.avg
-
-def validate(model, val_loader, criterion):
     model.eval()
-    
-    losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
-    
+    total, correct = 0, 0
     with torch.no_grad():
-        for inputs, targets in tqdm(val_loader, desc="Validation"):
-            inputs, targets = inputs.to(Config.DEVICE), targets.to(Config.DEVICE)
-            
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            
-            acc1, acc5 = accuracy(outputs, targets, topk=(1, 5))
-            losses.update(loss.item(), inputs.size(0))
-            top1.update(acc1.item(), inputs.size(0))
-            top5.update(acc5.item(), inputs.size(0))
-    
-    print(f"Validation: Loss: {losses.avg:.4f}, Acc@1: {top1.avg:.2f}%, Acc@5: {top5.avg:.2f}%")
-    
-    return losses.avg, top1.avg, top5.avg
+        for imgs, labels in val_loader:
+            imgs, labels = imgs.to(device), labels.to(device)
+            outputs = model(imgs)
+            _, preds = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (preds == labels).sum().item()
+    print(f"Epoch {epoch+1}: Accuracy = {correct/total:.4f}")
 
-def train():
-    torch.manual_seed(Config.RANDOM_SEED)
-    np.random.seed(Config.RANDOM_SEED)
-    
-    os.makedirs(Config.MODELS_DIR, exist_ok=True)
-    
-    train_loader, val_loader, test_loader, num_classes, class_names = get_dataloaders()
-    
-    print(f"Number of classes: {num_classes}")
-    print(f"Class names: {class_names}")
-    
-    model = get_model(num_classes)
-    criterion = nn.CrossEntropyLoss()
-    
-    optimizer = optim.AdamW(
-        model.parameters(),
-        lr=Config.LEARNING_RATE,
-        weight_decay=Config.WEIGHT_DECAY
-    )
-    
-    scheduler = ReduceLROnPlateau(
-        optimizer,
-        mode='min',
-        factor=0.5,
-        patience=3,
-        verbose=True
-    )
-    
-    best_acc = 0
-    
-    for epoch in range(Config.NUM_EPOCHS):
-        start_time = time.time()
-        
-        train_loss, train_acc1, train_acc5 = train_epoch(
-            model, train_loader, criterion, optimizer, epoch)
-        
-        val_loss, val_acc1, val_acc5 = validate(model, val_loader, criterion)
-        
-        scheduler.step(val_loss)
-        
-        epoch_time = time.time() - start_time
-        
-        print(f"Epoch {epoch} completed in {epoch_time:.2f}s")
-        print(f"Train: Loss: {train_loss:.4f}, Acc@1: {train_acc1:.2f}%, Acc@5: {train_acc5:.2f}%")
-        print(f"Val: Loss: {val_loss:.4f}, Acc@1: {val_acc1:.2f}%, Acc@5: {val_acc5:.2f}%")
-        
-        is_best = val_acc1 > best_acc
-        best_acc = max(val_acc1, best_acc)
-        
-        save_checkpoint({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'best_acc': best_acc,
-            'optimizer_state_dict': optimizer.state_dict(),
-            'class_names': class_names,
-            'num_classes': num_classes
-        }, is_best)
-        
-    print(f"Best validation accuracy: {best_acc:.2f}%")
-
-if __name__ == "__main__":
-    train()
+torch.save(model.state_dict(), 'apple_leaf_disease_model_v1.pth')
