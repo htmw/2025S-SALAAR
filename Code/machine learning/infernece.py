@@ -18,11 +18,14 @@ class SimpleCNN(nn.Module):
             nn.MaxPool2d(2),
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
             nn.MaxPool2d(2)
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(64 * (150//4) * (150//4), 128),
+            nn.Linear(128 * (150//8) * (150//8), 128),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(128, 3)
@@ -34,7 +37,7 @@ class SimpleCNN(nn.Module):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('image_path', type=str)
-parser.add_argument('--model_path', type=str, default='apple_leaf_disease_model_v1.pth')
+parser.add_argument('--model_path', type=str, default='apple_leaf_disease_model_v2.pth')
 args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -47,7 +50,14 @@ img_t = transform(img)
 img_t = img_t.unsqueeze(0).to(device)
 with torch.no_grad():
     outputs = model(img_t)
-    _, pred = torch.max(outputs, 1)
+    softmax = torch.softmax(outputs, dim=1)
+    confidence, pred = torch.max(softmax, 1)
 class_labels = {0: "Healthy", 1: "Scab", 2: "Rust"}
-result = class_labels.get(pred.item(), "Unknown")
-print("Predicted Class:", result)
+advice_mapping = {"Healthy": "No action needed.", "Scab": "Apply appropriate fungicide.", "Rust": "Ensure proper air circulation and consider fungicide."}
+pred_label = class_labels.get(pred.item(), "Unknown")
+print("Predicted Class:", pred_label)
+print("Confidence Score:", confidence.item() * 100)
+if pred_label != "Healthy":
+    print("Recommended Action:", advice_mapping.get(pred_label, "No advice available."))
+else:
+    print("Leaf appears healthy.")
