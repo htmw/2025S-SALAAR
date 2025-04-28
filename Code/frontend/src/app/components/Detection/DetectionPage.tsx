@@ -1,4 +1,6 @@
-import { useState, useRef } from 'react';
+// File: components/Detection/DetectionPage.tsx
+// Production implementation with robust error handling
+import { useState } from 'react';
 import {
   Flex,
   Box,
@@ -15,7 +17,7 @@ import {
   ReloadIcon,
 } from '@radix-ui/react-icons';
 import { DetectionResult, ScanHistory } from '../../types';
-import ImagePreview from './ImagePreview';
+import ImageUpload from './ImageUpload';
 import ResultDisplay from './ResultDisplay';
 
 interface DetectionPageProps {
@@ -31,51 +33,47 @@ export default function DetectionPage({
 }: DetectionPageProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<{processed: number, total: number}>({processed: 0, total: 0});
   const [results, setResults] = useState<DetectionResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    // Convert FileList to array and limit to 5 files
-    const fileArray = Array.from(files).slice(0, 5);
-    
-    // Validate each file
-    const validFiles: File[] = [];
-    const newPreviews: string[] = [];
-    let hasInvalidFile = false;
-    
-    fileArray.forEach(file => {
-      if (!file.type.startsWith('image/')) {
-        hasInvalidFile = true;
-        return;
-      }
-      validFiles.push(file);
+  // Process a single image and return its result
+  const processImage = async (file: File): Promise<DetectionResult> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      // Set a timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
       
-      // Create image preview
-      const reader = new FileReader();
-      reader.onload = () => {
-        newPreviews.push(reader.result as string);
-        if (newPreviews.length === validFiles.length) {
-          setPreviews(newPreviews);
+      const response = await fetch('/api/detect', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        let errorMessage = `API Error (${response.status})`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If JSON parsing fails, use status text
+          errorMessage = response.statusText || errorMessage;
         }
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    if (hasInvalidFile) {
-      setError('One or more files are not images. Only image files are accepted.');
-    } else {
-      setError(null);
+        
+        throw new Error(errorMessage);
+      }
+      
+      return await response.json();
+    } catch (err: any) {
+      // Rethrow the error to be handled by the caller
+      throw new Error(err.message || 'Failed to process image');
     }
-    
-    setSelectedFiles(validFiles);
-    setResults([]);
-    setCurrentPreviewIndex(0);
   };
 
   const handleSubmit = async () => {
@@ -86,34 +84,51 @@ export default function DetectionPage({
 
     setLoading(true);
     setError(null);
+    setResults([]);
+    setProcessingStatus({processed: 0, total: selectedFiles.length});
+    
     const newResults: DetectionResult[] = [];
-
-    try {
-      // Process each file sequentially
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const formData = new FormData();
-        formData.append('image', selectedFiles[i]);
-
-        // Call the API
-        const response = await fetch('/api/detect', {
-          method: 'POST',
-          body: formData,
+    const successfulUploads: {result: DetectionResult, index: number}[] = [];
+    
+    // Process each image and collect results
+    for (let i = 0; i < selectedFiles.length; i++) {
+      try {
+        const result = await processImage(selectedFiles[i]);
+        
+        // Add to results array
+        newResults.push(result);
+        
+        // Track successful uploads
+        successfulUploads.push({
+          result,
+          index: i
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to analyze image');
-        }
-
-        const data = await response.json();
-        newResults.push(data);
+      } catch (err: any) {
+        console.error(`Error processing image ${i + 1}:`, err);
+        
+        // Add failed result
+        newResults.push({
+          status: 'Diseased', // Default to diseased as a precaution
+          disease: 'Analysis Failed',
+          confidence: 0,
+          advice: `Analysis failed: ${err.message}. Please try again with a clearer image.`
+        });
       }
       
-      setResults(newResults);
-      
-      // Save to scan history in local storage
-      const newHistoryItems: ScanHistory[] = newResults.map((result, index) => ({
-        id: Date.now() + '-' + index,
+      // Update processing status
+      setProcessingStatus({
+        processed: i + 1,
+        total: selectedFiles.length
+      });
+    }
+    
+    // Update results state
+    setResults(newResults);
+    
+    // Save successful results to history
+    if (successfulUploads.length > 0) {
+      const newHistoryItems: ScanHistory[] = successfulUploads.map(({result, index}) => ({
+        id: `${Date.now()}-${index}`,
         date: new Date().toLocaleString(),
         image: previews[index],
         result: result
@@ -121,14 +136,21 @@ export default function DetectionPage({
       
       const updatedHistory = [...newHistoryItems, ...scanHistory];
       setScanHistory(updatedHistory);
-      localStorage.setItem('scanHistory', JSON.stringify(updatedHistory));
       
-    } catch (err: any) {
-      console.error('Error analyzing image:', err);
-      setError(err.message || 'Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
+      // Save to local storage
+      try {
+        localStorage.setItem('scanHistory', JSON.stringify(updatedHistory));
+      } catch (err) {
+        console.error('Failed to save to local storage:', err);
+      }
     }
+    
+    // Show overall error if all uploads failed
+    if (successfulUploads.length === 0 && selectedFiles.length > 0) {
+      setError('All image analyses failed. Please check your connection and try again.');
+    }
+    
+    setLoading(false);
   };
 
   const resetForm = () => {
@@ -136,10 +158,7 @@ export default function DetectionPage({
     setPreviews([]);
     setResults([]);
     setError(null);
-    setCurrentPreviewIndex(0);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setProcessingStatus({processed: 0, total: 0});
   };
 
   return (
@@ -172,21 +191,22 @@ export default function DetectionPage({
               
               {selectedFiles.length === 0 || results.length === 0 ? (
                 <Flex direction="column" gap="4">
-                  <ImagePreview 
+                  <ImageUpload 
+                    selectedFiles={selectedFiles}
+                    setSelectedFiles={setSelectedFiles}
                     previews={previews}
-                    currentPreviewIndex={currentPreviewIndex}
-                    setCurrentPreviewIndex={setCurrentPreviewIndex}
-                    fileInputRef={fileInputRef}
+                    setPreviews={setPreviews}
+                    maxFiles={5}
                   />
                   
                   <Flex justify="end" gap="3">
-                    {previews.length > 0 && (
+                    {selectedFiles.length > 0 && (
                       <Button 
                         variant="soft" 
                         color="gray" 
                         onClick={resetForm}
                       >
-                        Clear
+                        Clear All
                       </Button>
                     )}
                     <Button 
@@ -196,20 +216,13 @@ export default function DetectionPage({
                       {loading ? (
                         <Flex gap="2" align="center">
                           <ReloadIcon className="animate-spin" />
-                          Analyzing...
+                          <Text>
+                            Processing {processingStatus.processed} of {processingStatus.total}...
+                          </Text>
                         </Flex>
-                      ) : `Analyze ${selectedFiles.length > 1 ? `${selectedFiles.length} Leaves` : 'Leaf'}`}
+                      ) : `Analyze ${selectedFiles.length > 1 ? `${selectedFiles.length} Images` : 'Image'}`}
                     </Button>
                   </Flex>
-                  
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*"
-                    multiple
-                    style={{ display: 'none' }}
-                  />
                 </Flex>
               ) : (
                 <Flex direction="column" gap="4">
