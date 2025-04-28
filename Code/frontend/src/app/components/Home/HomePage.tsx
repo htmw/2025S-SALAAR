@@ -14,7 +14,6 @@ export default function HomePage({ scanHistory, setActiveTab }: HomePageProps) {
     <>
       <HeroSection setActiveTab={setActiveTab} />
       <RecentScansSection scanHistory={scanHistory} setActiveTab={setActiveTab} />
-      <OrchardHealthSection />
       <QuickActions setActiveTab={setActiveTab} />
     </>
   );
