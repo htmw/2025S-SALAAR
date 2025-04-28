@@ -1,5 +1,5 @@
 // File: components/Detection/DetectionPage.tsx
-// Production implementation with robust error handling
+// Enhanced with debugging capabilities to track responses
 import { useState } from 'react';
 import {
   Flex,
@@ -11,10 +11,12 @@ import {
   Container,
   Section,
   Callout,
+  Badge,
 } from '@radix-ui/themes';
 import {
   ExclamationTriangleIcon,
   ReloadIcon,
+  InfoCircledIcon,
 } from '@radix-ui/react-icons';
 import { DetectionResult, ScanHistory } from '../../types';
 import ImageUpload from './ImageUpload';
@@ -37,13 +39,17 @@ export default function DetectionPage({
   const [processingStatus, setProcessingStatus] = useState<{processed: number, total: number}>({processed: 0, total: 0});
   const [results, setResults] = useState<DetectionResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   // Process a single image and return its result
-  const processImage = async (file: File): Promise<DetectionResult> => {
+  const processImage = async (file: File, index: number): Promise<DetectionResult> => {
     const formData = new FormData();
     formData.append('image', file);
 
     try {
+      // Add debug info
+      setDebugInfo(prev => [...prev, `Starting analysis of image ${index + 1}: ${file.name}`]);
+      
       // Set a timeout to prevent hanging requests
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
@@ -51,7 +57,12 @@ export default function DetectionPage({
       const response = await fetch('/api/detect', {
         method: 'POST',
         body: formData,
-        signal: controller.signal
+        signal: controller.signal,
+        // Add a cache-busting parameter to prevent cached responses
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
       
       clearTimeout(timeoutId);
@@ -66,11 +77,30 @@ export default function DetectionPage({
           errorMessage = response.statusText || errorMessage;
         }
         
+        setDebugInfo(prev => [...prev, `Error analyzing image ${index + 1}: ${errorMessage}`]);
         throw new Error(errorMessage);
       }
       
-      return await response.json();
+      const apiResponse = await response.json();
+      
+      // Add debug info
+      setDebugInfo(prev => [...prev, `Received response for image ${index + 1}: ${JSON.stringify(apiResponse)}`]);
+      
+      // Create a unique result by adding the file index to ensure different results
+      // This helps determine if the issue is with the API or the display
+      const result: DetectionResult = {
+        ...apiResponse,
+        // Add extra debug info to visibly differentiate results
+        disease: apiResponse.disease ? `${apiResponse.disease} (Image ${index + 1})` : null,
+        // Append image number to advice to make it visibly different
+        advice: apiResponse.advice ? `${apiResponse.advice} (Result for Image ${index + 1})` : null
+      };
+      
+      return result;
     } catch (err: any) {
+      // Add debug info
+      setDebugInfo(prev => [...prev, `Exception for image ${index + 1}: ${err.message}`]);
+      
       // Rethrow the error to be handled by the caller
       throw new Error(err.message || 'Failed to process image');
     }
@@ -85,6 +115,7 @@ export default function DetectionPage({
     setLoading(true);
     setError(null);
     setResults([]);
+    setDebugInfo([]);
     setProcessingStatus({processed: 0, total: selectedFiles.length});
     
     const newResults: DetectionResult[] = [];
@@ -93,7 +124,7 @@ export default function DetectionPage({
     // Process each image and collect results
     for (let i = 0; i < selectedFiles.length; i++) {
       try {
-        const result = await processImage(selectedFiles[i]);
+        const result = await processImage(selectedFiles[i], i);
         
         // Add to results array
         newResults.push(result);
@@ -109,9 +140,9 @@ export default function DetectionPage({
         // Add failed result
         newResults.push({
           status: 'Diseased', // Default to diseased as a precaution
-          disease: 'Analysis Failed',
+          disease: `Analysis Failed (Image ${i + 1})`,
           confidence: 0,
-          advice: `Analysis failed: ${err.message}. Please try again with a clearer image.`
+          advice: `Analysis failed: ${err.message}. Please try again with a clearer image. (Image ${i + 1})`
         });
       }
       
@@ -121,6 +152,9 @@ export default function DetectionPage({
         total: selectedFiles.length
       });
     }
+    
+    // Log for debugging
+    console.log('All results:', newResults);
     
     // Update results state
     setResults(newResults);
@@ -158,6 +192,7 @@ export default function DetectionPage({
     setPreviews([]);
     setResults([]);
     setError(null);
+    setDebugInfo([]);
     setProcessingStatus({processed: 0, total: 0});
   };
 
@@ -227,6 +262,44 @@ export default function DetectionPage({
               ) : (
                 <Flex direction="column" gap="4">
                   <ResultDisplay results={results} previews={previews} />
+                  
+                  {/* Debug information section */}
+                  {debugInfo.length > 0 && (
+                    <Callout.Root color="blue">
+                      <Callout.Icon>
+                        <InfoCircledIcon />
+                      </Callout.Icon>
+                      <Callout.Text asChild>
+                        <Box>
+                          <Text weight="bold" size="2" as="div">Debug Information:</Text>
+                          <Box 
+                            style={{ 
+                              maxHeight: '200px', 
+                              overflowY: 'auto',
+                              backgroundColor: 'var(--gray-2)',
+                              padding: '8px',
+                              borderRadius: 'var(--radius-2)',
+                              marginTop: '8px'
+                            }}
+                          >
+                            {debugInfo.map((info, i) => (
+                              <Text size="1" as="div" key={i} style={{whiteSpace: 'pre-wrap', marginBottom: '4px'}}>
+                                {info}
+                              </Text>
+                            ))}
+                          </Box>
+                          <Flex justify="between" mt="2">
+                            <Badge size="1" variant="soft" color="gray">
+                              {results.length} Results
+                            </Badge>
+                            <Button size="1" variant="soft" color="gray" onClick={() => setDebugInfo([])}>
+                              Clear Log
+                            </Button>
+                          </Flex>
+                        </Box>
+                      </Callout.Text>
+                    </Callout.Root>
+                  )}
                   
                   <Flex justify="end" gap="3">
                     <Button 
