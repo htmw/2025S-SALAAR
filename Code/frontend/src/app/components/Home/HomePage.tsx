@@ -1,6 +1,5 @@
 import HeroSection from './HeroSection';
 import RecentScansSection from './RecentScansSection';
-import OrchardHealthSection from './OrchardHealthSection';
 import QuickActions from './QuickActions';
 import { ScanHistory } from '../../types';
 
