@@ -56,9 +56,9 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
             >
               History
             </Text>
-            <Text as="a" href="#" weight="medium">About</Text>
-            <Text as="a" href="#" weight="medium">Diseases</Text>
-            <Text as="a" href="#" weight="medium">Contact</Text>
+            <Text as="a" href="/about" weight="medium">About</Text>
+            <Text as="a" href="/diseases" weight="medium">Diseases</Text>
+            <Text as="a" href="/contact" weight="medium">Contact</Text>
           </Flex>
           
           {/* Mobile Menu Button */}
@@ -118,9 +118,9 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
                     >
                       History
                     </Text>
-                    <Text as="a" href="#" size="3" weight="medium">About</Text>
-                    <Text as="a" href="#" size="3" weight="medium">Diseases</Text>
-                    <Text as="a" href="#" size="3" weight="medium">Contact</Text>
+                    <Text as="a" href="/about" size="3" weight="medium">About</Text>
+                    <Text as="a" href="/diseases" size="3" weight="medium">Diseases</Text>
+                    <Text as="a" href="/contact" size="3" weight="medium">Contact</Text>
                   </Flex>
                 </Flex>
               </Dialog.Content>
