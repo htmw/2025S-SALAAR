@@ -53,46 +53,44 @@ import {
                     {result.status === 'Healthy' ? <CheckIcon /> : <ExclamationTriangleIcon />}
                   </Callout.Icon>
                   <Callout.Text>
-                    <Flex direction="column" gap="2">
-                      <Text weight="bold" size="5">
-                        {result.status === 'Healthy' 
-                          ? 'Healthy Leaf' 
-                          : result.disease ? `Disease: ${result.disease}` : 'Diseased Leaf'}
-                      </Text>
-                      {result.confidence !== undefined && (
-                        <Flex align="center" gap="2">
-                          <Text size="2">Confidence:</Text>
-                          <Box style={{ 
-                            width: '100%', 
-                            maxWidth: '150px',
-                            height: '8px',
-                            backgroundColor: 'var(--gray-3)',
-                            borderRadius: '4px',
-                            overflow: 'hidden'
-                          }}>
-                            <Box style={{ 
-                              width: `${result.confidence}%`,
-                              height: '100%',
-                              backgroundColor: result.status === 'Healthy' ? 'var(--green-9)' : 'var(--red-9)'
-                            }} />
-                          </Box>
-                          <Text size="2" weight="medium">{Math.round(result.confidence)}%</Text>
-                        </Flex>
-                      )}
-                      {result.advice && (
-                        <Box mt="2" style={{ 
-                          backgroundColor: 'var(--gray-2)', 
-                          padding: '8px 12px', 
-                          borderRadius: 'var(--radius-2)',
-                          border: '1px solid var(--gray-4)'
+                    {/* Fixed: Removed nested divs inside paragraph elements */}
+                    <Text weight="bold" size="5">
+                      {result.status === 'Healthy' 
+                        ? 'Healthy Leaf' 
+                        : result.disease ? `Disease: ${result.disease}` : 'Diseased Leaf'}
+                    </Text>
+                    
+                    {result.confidence !== undefined && (
+                      <Box mt="2">
+                        <Text size="2">Confidence: {Math.round(result.confidence)}%</Text>
+                        <Box mt="1" style={{ 
+                          width: '100%', 
+                          maxWidth: '150px',
+                          height: '8px',
+                          backgroundColor: 'var(--gray-3)',
+                          borderRadius: '4px',
+                          overflow: 'hidden'
                         }}>
-                          <Flex gap="2" align="start">
-                            <Text size="2" weight="bold">Advice:</Text>
-                            <Text size="2">{result.advice}</Text>
-                          </Flex>
+                          <Box style={{ 
+                            width: `${result.confidence}%`,
+                            height: '100%',
+                            backgroundColor: result.status === 'Healthy' ? 'var(--green-9)' : 'var(--red-9)'
+                          }} />
                         </Box>
-                      )}
-                    </Flex>
+                      </Box>
+                    )}
+                    
+                    {result.advice && (
+                      <Box mt="2" style={{ 
+                        backgroundColor: 'var(--gray-2)', 
+                        padding: '8px 12px', 
+                        borderRadius: 'var(--radius-2)',
+                        border: '1px solid var(--gray-4)'
+                      }}>
+                        <Text size="2" weight="bold">Advice:</Text>
+                        <Text size="2">{result.advice}</Text>
+                      </Box>
+                    )}
                   </Callout.Text>
                 </Callout.Root>
               </Flex>
@@ -102,4 +100,3 @@ import {
       </Tabs.Root>
     );
   }
-  
