@@ -12,9 +12,10 @@ import {
   HamburgerMenuIcon,
   Cross2Icon,
 } from '@radix-ui/react-icons';
+import Link from 'next/link';
 
 interface HeaderProps {
-  activeTab: 'home' | 'detection' | 'history';
+  activeTab: 'home' | 'detection' | 'history' | 'about' | 'diseases';
   setActiveTab: (tab: 'home' | 'detection' | 'history') => void;
 }
 
@@ -26,39 +27,61 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
       <Container size="3">
         <Flex justify="between" align="center" py="4">
           <Flex gap="2" align="center">
-            <Avatar fallback="P" color="green" />
-            <Text size="5" weight="bold" color="green">Phytora</Text>
+            <Link href="/" onClick={() => setActiveTab('home')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Avatar fallback="P" color="green" />
+              <Text size="5" weight="bold" color="green">Phytora</Text>
+            </Link>
           </Flex>
           
           {/* Desktop Navigation */}
           <Flex gap="6" display={{ initial: 'none', md: 'flex' }}>
-            <Text as="a" href="#" 
-              onClick={() => setActiveTab('home')} 
-              weight="medium" 
-              color={activeTab === 'home' ? "green" : undefined}
-              style={{ cursor: 'pointer' }}
-            >
-              Home
-            </Text>
-            <Text as="a" href="#" 
-              onClick={() => setActiveTab('detection')} 
-              weight="medium"
-              color={activeTab === 'detection' ? "green" : undefined}
-              style={{ cursor: 'pointer' }}
-            >
-              Detection
-            </Text>
-            <Text as="a" href="#" 
-              onClick={() => setActiveTab('history')} 
-              weight="medium"
-              color={activeTab === 'history' ? "green" : undefined}
-              style={{ cursor: 'pointer' }}
-            >
-              History
-            </Text>
-            <Text as="a" href="/about" weight="medium">About</Text>
-            <Text as="a" href="/diseases" weight="medium">Diseases</Text>
-            <Text as="a" href="/contact" weight="medium">Contact</Text>
+            <Link href="/" onClick={() => setActiveTab('home')} passHref>
+              <Text
+                weight="medium" 
+                color={activeTab === 'home' ? "green" : undefined}
+                style={{ cursor: 'pointer' }}
+              >
+                Home
+              </Text>
+            </Link>
+            
+            <Link href="/#detection" onClick={() => setActiveTab('detection')} passHref>
+              <Text
+                weight="medium"
+                color={activeTab === 'detection' ? "green" : undefined}
+                style={{ cursor: 'pointer' }}
+              >
+                Detection
+              </Text>
+            </Link>
+            
+            <Link href="/#history" onClick={() => setActiveTab('history')} passHref>
+              <Text
+                weight="medium"
+                color={activeTab === 'history' ? "green" : undefined}
+                style={{ cursor: 'pointer' }}
+              >
+                History
+              </Text>
+            </Link>
+            
+            <Link href="/about" passHref>
+              <Text 
+                weight="medium"
+                color={activeTab === 'about' ? "green" : undefined}
+              >
+                About
+              </Text>
+            </Link>
+            
+            <Link href="/diseases" passHref>
+              <Text 
+                weight="medium"
+                color={activeTab === 'diseases' ? "green" : undefined}
+              >
+                Diseases
+              </Text>
+            </Link>
           </Flex>
           
           {/* Mobile Menu Button */}
@@ -82,45 +105,72 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
                   </Flex>
                   
                   <Flex direction="column" gap="4">
-                    <Text as="a" href="#" 
-                      onClick={() => {
-                        setActiveTab('home');
-                        setMobileMenuOpen(false);
-                      }} 
-                      size="3" 
-                      weight="medium" 
-                      color={activeTab === 'home' ? "green" : undefined}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Home
-                    </Text>
-                    <Text as="a" href="#" 
-                      onClick={() => {
-                        setActiveTab('detection');
-                        setMobileMenuOpen(false);
-                      }} 
-                      size="3" 
-                      weight="medium"
-                      color={activeTab === 'detection' ? "green" : undefined}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Detection
-                    </Text>
-                    <Text as="a" href="#" 
-                      onClick={() => {
-                        setActiveTab('history');
-                        setMobileMenuOpen(false);
-                      }} 
-                      size="3" 
-                      weight="medium"
-                      color={activeTab === 'history' ? "green" : undefined}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      History
-                    </Text>
-                    <Text as="a" href="/about" size="3" weight="medium">About</Text>
-                    <Text as="a" href="/diseases" size="3" weight="medium">Diseases</Text>
-                    <Text as="a" href="/contact" size="3" weight="medium">Contact</Text>
+                    <Link href="/" passHref>
+                      <Text 
+                        onClick={() => {
+                          setActiveTab('home');
+                          setMobileMenuOpen(false);
+                        }} 
+                        size="3" 
+                        weight="medium" 
+                        color={activeTab === 'home' ? "green" : undefined}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        Home
+                      </Text>
+                    </Link>
+                    
+                    <Link href="/#detection" passHref>
+                      <Text 
+                        onClick={() => {
+                          setActiveTab('detection');
+                          setMobileMenuOpen(false);
+                        }} 
+                        size="3" 
+                        weight="medium"
+                        color={activeTab === 'detection' ? "green" : undefined}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        Detection
+                      </Text>
+                    </Link>
+                    
+                    <Link href="/#history" passHref>
+                      <Text 
+                        onClick={() => {
+                          setActiveTab('history');
+                          setMobileMenuOpen(false);
+                        }} 
+                        size="3" 
+                        weight="medium"
+                        color={activeTab === 'history' ? "green" : undefined}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        History
+                      </Text>
+                    </Link>
+                    
+                    <Link href="/about" passHref>
+                      <Text 
+                        onClick={() => setMobileMenuOpen(false)} 
+                        size="3" 
+                        weight="medium"
+                        color={activeTab === 'about' ? "green" : undefined}
+                      >
+                        About
+                      </Text>
+                    </Link>
+                    
+                    <Link href="/diseases" passHref>
+                      <Text 
+                        onClick={() => setMobileMenuOpen(false)} 
+                        size="3" 
+                        weight="medium"
+                        color={activeTab === 'diseases' ? "green" : undefined}
+                      >
+                        Diseases
+                      </Text>
+                    </Link>
                   </Flex>
                 </Flex>
               </Dialog.Content>
